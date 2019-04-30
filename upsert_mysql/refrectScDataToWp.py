@@ -78,7 +78,8 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       'icon_meal_field': upMeal,
       'icon_transportationFee_field': upTransportationFee,
       'icon_wifi_field': upWifi,
-      'icon_spa_field': upSpa
+      'icon_spa_field': upSpa,
+      'int_salary_field': int(upSalary2),
       }
       # "sc_daily"テーブルの値を1行ずつ"wp_postmeta"に格納（処理遅め）
       for pmMetaKey in scDailyValue:
