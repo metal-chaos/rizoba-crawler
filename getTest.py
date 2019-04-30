@@ -4,20 +4,32 @@ from time import sleep
 import datetime
 import connection
 
-def upsert_wp_table():
+scDailyValue = {
+    "id": "48",
+    "prefectures_name": "bbb",
+    "prefectures_slug": "aaa",
+  }
+
+def insert_into(table, keys):
   mysqlConnect = connection.connect()
-  cur = mysqlConnect.connect_mysql()
+  conn = mysqlConnect.connect_mysql()
+  cur = conn.cursor()
 
   with cur as cursor:
-    print("開始")
-    try:
-      postsSql = "SELECT * FROM sc_daily WHERE sc_id = %s"
-      cursor.execute(postsSql, (564))
-      dailyValues = cursor.fetchone()
-      print(dailyValues['sc_date'])
-    except:
-      print("だめでした")
-    finally:
-      print("終了っす")
+    tableKey = ""
+    tableValue = ""
+    for key in keys.keys():
+      if key[-1]:
+        tableKey += key
+        tableValue += keys[key]
+      else:
+        tableKey += key + ", "
+        tableValue += keys[key] + ", "
+    sql = "INSERT INTO %s (%s, %s) VALUES (%s, %s)"
+    print(tableKey)
+    print(tableValue)
+    cursor.execute(sql, (table, tableKey, tableValue))
+    conn.commit()
+    conn.close()
 
-upsert_wp_table()
+insert_into("sc_prefectures", scDailyValue)
