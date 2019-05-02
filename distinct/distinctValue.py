@@ -107,3 +107,34 @@ def save_image(companyName, companyPicturePath, picturePermaLink):
   reImage = requests.get(companyPicturePath)
   with open(saveImagePath, mode = "wb") as f:
     f.write(reImage.content)
+
+# -----------------------------------
+# 概要：RESORNスコアを算出するメソッド
+# -----------------------------------
+def resorn_score(dormitory, campaign, meal, transportationFee, wifi, spa, KindOfSalary, figureOfsalary):
+  print(dormitory)
+  print(campaign)
+  print(meal)
+  print(transportationFee)
+  print(wifi)
+  print(spa)
+  print(KindOfSalary)
+  print(figureOfsalary)
+  sum_resorn_score = 0
+  welfares = [dormitory, campaign, meal, transportationFee, wifi, spa]
+  for welfare in welfares:
+    if welfare == "TRUE":
+      sum_resorn_score += 0.5
+  if "日給" in KindOfSalary or "月給" in KindOfSalary:
+    return sum_resorn_score
+  else:
+    if 900 <= figureOfsalary and figureOfsalary < 1000:
+      sum_resorn_score += 0.5
+    elif 1000 <= figureOfsalary and figureOfsalary < 1100:
+      sum_resorn_score += 1
+    elif 1100 <= figureOfsalary and figureOfsalary < 1200:
+      sum_resorn_score += 1.5
+    elif 1200 <= figureOfsalary:
+      sum_resorn_score += 2
+    print(sum_resorn_score)
+    return sum_resorn_score

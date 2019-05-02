@@ -4,32 +4,22 @@ from time import sleep
 import datetime
 import connection
 
-scDailyValue = {
-    "id": "48",
-    "prefectures_name": "bbb",
-    "prefectures_slug": "aaa",
-  }
+def resorn_score(dormitory, campaign, meal, transportationFee, wifi, spa, KindOfSalary, figureOfsalary):
+  sum_resorn_score = 0
+  welfares = [dormitory, campaign, meal, transportationFee, wifi, spa]
+  for welfare in welfares:
+    if welfare == "TRUE":
+      sum_resorn_score += 0.5
+  if "時給" in KindOfSalary:
+    if 1000 < figureOfsalary and figureOfsalary <= 1100:
+      sum_resorn_score += 0.5
+    elif 1100 < figureOfsalary and figureOfsalary <= 1200:
+      sum_resorn_score += 1
+    elif 1200 < figureOfsalary and figureOfsalary <= 1300:
+      sum_resorn_score += 1.5
+    elif 1300 < figureOfsalary:
+      sum_resorn_score += 2
+  return sum_resorn_score
 
-def insert_into(table, keys):
-  mysqlConnect = connection.connect()
-  conn = mysqlConnect.connect_mysql()
-  cur = conn.cursor()
-
-  with cur as cursor:
-    tableKey = ""
-    tableValue = ""
-    for key in keys.keys():
-      if key[-1]:
-        tableKey += key
-        tableValue += keys[key]
-      else:
-        tableKey += key + ", "
-        tableValue += keys[key] + ", "
-    sql = "INSERT INTO %s (%s, %s) VALUES (%s, %s)"
-    print(tableKey)
-    print(tableValue)
-    cursor.execute(sql, (table, tableKey, tableValue))
-    conn.commit()
-    conn.close()
-
-insert_into("sc_prefectures", scDailyValue)
+aa = resorn_score("FALSE", "TRUE", "TRUE", "TRUE", "TRUE", "TRUE", "時給", 1080)
+print(aa)
