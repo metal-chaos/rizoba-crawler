@@ -21,3 +21,4 @@ GD_HOME_URL = os.environ.get("GD_HOME_URL")
 HU_HOME_URL = os.environ.get("HU_HOME_URL")
 
 SAVE_IMAGE_PATH = os.environ.get("SAVE_IMAGE_PATH")
+SAVE_IMAGE_PERMALINK_PATH = os.environ.get("SAVE_IMAGE_PERMALINK_PATH")

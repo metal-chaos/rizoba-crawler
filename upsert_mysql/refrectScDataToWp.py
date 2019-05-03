@@ -8,6 +8,7 @@ from time import sleep
 import datetime
 from distinct import distinctValue as dV
 import connection
+import settings
 
 def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccupation, upSalary1, upSalary2, upSalary3, upTerm, upTime, upTreatment, upJobDesc, upMeal, upTransportationFee, upWifi, upSpa, upPlace, upAffiliateLink, upCampaign, upCompanyName, dateKey):
   mysqlConnect = connection.connect()
@@ -134,7 +135,7 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       # ⑥"wp_posts"テーブルに画像情報をUPSERT
       # ------------------------------------------------
       # 画像へのリンクを変数に格納
-      upImagePermaLink = "https://resorn.net/wp-content/uploads/crawled-images/" + upCompanyName + "/" + upPermaLink + ".jpg"
+      upImagePermaLink = settings.SAVE_IMAGE_PERMALINK_PATH + upCompanyName + "/" + upPermaLink + ".jpg"
       # post_nameが存在するか確認する
       postsImageSql = "SELECT * FROM wp_posts WHERE post_name = %s"
       cursor.execute(postsImageSql, (upPermaLink + ".jpg"))

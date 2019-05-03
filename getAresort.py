@@ -12,8 +12,9 @@ from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
 import traceback,sys
 import random
+import settings
 
-arHomeUrl = "https://www.a-resort.jp"
+arHomeUrl = settings.AR_HOME_URL
 arListUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
 arDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 

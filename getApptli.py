@@ -12,8 +12,9 @@ from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
 import traceback,sys
 import random
+import settings
 
-apHomeUrl = "https://hataraku.com"
+apHomeUrl = settings.AP_HOME_URL
 apListUrl = "https://hataraku.com/work/search/various/submit/?type=&page="
 apDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 

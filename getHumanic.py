@@ -12,8 +12,9 @@ from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
 import traceback,sys
 import random
+import settings
 
-homeUrl = "https://www.rizoba.com"
+homeUrl = settings.HU_HOME_URL
 listUrl = "https://www.rizoba.com/search/result/?page="
 huDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 

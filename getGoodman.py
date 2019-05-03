@@ -12,8 +12,9 @@ from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
 import traceback,sys
 import random
+import settings
 
-gdHomeUrl = "https://www.resortbaito.com/"
+gdHomeUrl = settings.GD_HOME_URL
 gdListUrl1 = "https://www.resortbaito.com/search-results/?area="
 gdListUrl2 = "&extra=&top=on"
 gdDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
