@@ -4,6 +4,7 @@ import random
 import re
 import pymysql.cursors
 import traceback,sys
+import settings
 
 # -----------------------------------
 # 概要：tax_salaryタグを判別するメソッド
@@ -103,7 +104,7 @@ def exception_error_log():
 # 概要：取得した画像を指定のディレクトリに保存するメソッド
 # -----------------------------------
 def save_image(companyName, companyPicturePath, picturePermaLink):
-  saveImagePath = "/home/komuinresign/resorn.net/public_html/wp-content/uploads/crawled-images/" + companyName + "/" + picturePermaLink + ".jpg"
+  saveImagePath = settings.SAVE_IMAGE_PATH + companyName + "/" + picturePermaLink + ".jpg"
   reImage = requests.get(companyPicturePath)
   with open(saveImagePath, mode = "wb") as f:
     f.write(reImage.content)
@@ -112,14 +113,6 @@ def save_image(companyName, companyPicturePath, picturePermaLink):
 # 概要：RESORNスコアを算出するメソッド
 # -----------------------------------
 def resorn_score(dormitory, campaign, meal, transportationFee, wifi, spa, KindOfSalary, figureOfsalary):
-  print(dormitory)
-  print(campaign)
-  print(meal)
-  print(transportationFee)
-  print(wifi)
-  print(spa)
-  print(KindOfSalary)
-  print(figureOfsalary)
   sum_resorn_score = 0
   welfares = [dormitory, campaign, meal, transportationFee, wifi, spa]
   for welfare in welfares:
@@ -136,5 +129,4 @@ def resorn_score(dormitory, campaign, meal, transportationFee, wifi, spa, KindOf
       sum_resorn_score += 1.5
     elif 1200 <= figureOfsalary:
       sum_resorn_score += 2
-    print(sum_resorn_score)
     return sum_resorn_score
