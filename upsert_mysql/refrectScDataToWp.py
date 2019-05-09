@@ -15,9 +15,6 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
   conn = mysqlConnect.connect_mysql()
   cur = conn.cursor()
 
-  # menu_orderの値の判別処理（あとで変更したい）
-  upMenuOrder = dV.distinct_menu_order()
-
   # ------------------------------------------------
   # "sc_daily"テーブルからWordpress用のテーブルにupsert
   # ------------------------------------------------
