@@ -38,6 +38,8 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       upMenuOrder = dV.distinct_menu_order()
       # RESORNスコア算出の処理
       upResornScore = dV.resorn_score(upDormitory, upCampaign, upMeal, upTransportationFee, upWifi, upSpa, upSalary1, int(upSalary2))
+      # int_salary_fieldの判別処理
+      upIntSalaryField = dV.distinct_int_salary_field(upSalary1, int(upSalary2))
 
       # ------------------------------------------------
       # ①"wp_posts"テーブルに求人情報をUPSERT
@@ -79,7 +81,7 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       'icon_transportationFee_field': upTransportationFee,
       'icon_wifi_field': upWifi,
       'icon_spa_field': upSpa,
-      'int_salary_field': int(upSalary2),
+      'int_salary_field': upIntSalaryField,
       'resorn_score_field': upResornScore,
       }
       # "sc_daily"テーブルの値を1行ずつ"wp_postmeta"に格納（処理遅め）

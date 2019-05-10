@@ -130,3 +130,12 @@ def resorn_score(dormitory, campaign, meal, transportationFee, wifi, spa, KindOf
     elif 1200 <= figureOfsalary:
       sum_resorn_score += 2
     return sum_resorn_score
+
+# -----------------------------------
+# 概要：int_salary_fieldの判別処理
+# -----------------------------------
+def distinct_int_salary_field(KindOfSalary, figureOfsalary):
+  if "日給" in KindOfSalary or "月給" in KindOfSalary:
+    return None
+  else:
+    return figureOfsalary
