@@ -71,7 +71,7 @@ def humanic_page_detail(afDtlLink, huDateKey):
   else:
     dormitory = "FALSE"
   picture = re.search(r"<span class=\"item_slide_image\">\s*<img alt=\"[\s\S]*?\" src=\"([\s\S]*?)\"", str(detailSoup)) # 画像
-  time = re.search(r"<dd class=\"item_info_description work_time_unit\">\s*([\s\S]*?)\s*<\/p>", str(detailSoup)) # 勤務時間（pタグ消したい）
+  time = re.search(r"<dd class=\"item_info_description work_time_unit\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 勤務時間（pタグ消したい）
   treatment = re.search(r"<dt class=\"item_info_term\">\s*福利厚生\s*<\/dt>\s*<dd class=\"item_info_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 待遇
   jobDesc = re.search(r"<dt class=\"item_info_lead_term\">\s*仕事内容\s*<\/dt>\s*<dd class=\"item_info_lead_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 仕事内容
   urlNum = re.search(r"(\d+)", str(afDtlLink))
