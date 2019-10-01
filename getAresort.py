@@ -13,19 +13,18 @@ from upsert_mysql import decidePrivatePublish as decidePP
 import traceback,sys
 import random
 import settings
-import pprint #あとで削除
 
 arHomeUrl = settings.AR_HOME_URL
 arListUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
 arDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
 ###########################
-# TODO:未テストなので要確認！！！！！！
-# targetValue = 仕事内容の中身
+# 概要: 「お仕事詳細情報」テーブルの中身を取得
 # detailSoup: ページ全体のデータ
 # kindOfElement: 仕事内容のタイトル
+# targetValue: 仕事内容の中身
 ###########################
-def aresort_get_work_info(detailSoup, kindOfElement):
+def get_work_info(detailSoup, kindOfElement):
     # 勤務時間があるか検索
     targetValue = ""
     headElement = "<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + "<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
@@ -61,6 +60,23 @@ def aresort_get_work_info(detailSoup, kindOfElement):
           targetValue += "<br>" + dataValues.group(addCountForValue + 1)
           addCountForValue += -1
     return targetValue
+
+###########################
+# 概要: 「福利厚生」テーブルの中身を取得（汎用性あり）
+###########################
+def get_treatment_info(detailSoup, kindOfElement):
+  targetValue = ""
+  elementName = []
+  # 引数により取得するthの名前を変更
+  if (kindOfElement == "福利厚生"):
+    elementNames = ["交通費", "社会保険", "特典"]
+  # searchして取得した各属性をtargetValueに格納
+  for elementName in elementNames:
+    getElement = r"<th scope=\"row\">" + elementName + r"<\/th>\s*?<td>\s*?([\s\S]*?)<\/td>"
+    result = re.search(getElement, detailSoup)
+    if (result):
+      targetValue += elementName + "：" + result.group(1)
+  return targetValue
 
 # 求人一覧を取得
 def aresort_page_list(arDateKey):
@@ -107,7 +123,8 @@ def aresort_page_detail(arAfDtlLink, arDateKey):
 
   arDetailHtml = requests.get(arAfDtlLink, timeout = 5)
   arDetailSoup = BeautifulSoup(arDetailHtml.text, 'html.parser')
-  arGetWorkInfo = aresort_get_work_info
+  getWorkInfo = get_work_info
+  getTreatmentInfo = get_treatment_info
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
   arTitle = arDetailSoup.title.string # タイトル
@@ -120,9 +137,10 @@ def aresort_page_detail(arAfDtlLink, arDateKey):
   else:
     arDormitory = "FALSE"
   arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(arDetailSoup)) # 画像
-  arTime = arGetWorkInfo(str(arDetailSoup), "勤務時間") # 勤務時間
-  print("arTimeは" + arTime)
-  arTreatment = re.search(r"<th>福利厚生<\/th>\s*<td>\s*([\s\S]*?)<\/td>", str(arDetailSoup)) # 待遇
+  arTime = getWorkInfo(str(arDetailSoup), "勤務時間") # 勤務時間
+  print("勤務時間は" + arTime)
+  arTreatment = getTreatmentInfo(str(arDetailSoup), "福利厚生") # 待遇
+  print("待遇は" + arTreatment)
   arJobDesc = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(arDetailSoup)) # 仕事内容
   # resorn用のパーマリンク作成
   arUrlNum = re.search(r"(\d+)", str(arAfDtlLink))
