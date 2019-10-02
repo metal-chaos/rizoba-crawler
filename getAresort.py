@@ -78,6 +78,37 @@ def get_treatment_info(detailSoup, kindOfElement):
       targetValue += elementName + "：" + result.group(1)
   return targetValue
 
+###########################
+# 概要: 「生活環境」テーブルの中身を取得（※食事支給）
+# パターン別
+# ①「有」で数字が「1」の場合はTRUE
+# ② 「有」で数字が「2」の場合かつ「備考」に「円」が含まれていない場合はTRUE
+# ③それ以外はFALSE
+###########################
+def get_meal_info(detailSoup):
+  targetValue = "FALSE"
+  headElement = "<th rowspan=\"([0-9]*?)\" scope=\"row\">食事支給<\/th>\s*?<td( class=\"text-center br_dot\")?( style=\"width: 30px;\")?>\s*?([\s\S]*?)\s*?<\/td>"
+  addElement = "[\s\S]*?<td class=\"br_dot\">備考<\/td>\s*?<td colspan=\"[0-9]*?\">([\s\S]*?)<\/td>[\s\S]*?ネット環境"
+  remarksElement = headElement + addElement
+
+  # 取得
+  headResult = re.search(headElement, detailSoup)
+  remarksResult = re.search(remarksElement, detailSoup)
+
+  if (headResult.group(1).strip() == 1):
+    if (headResult.group(4).strip() == "有"):
+      targetValue = "TRUE"
+      return targetValue
+    else:
+      return targetValue
+  if (int(headResult.group(1).strip()) >= 2):
+    if (headResult.group(4).strip() == "有" and not ("円" in remarksResult.group(5).strip())):
+      targetValue = "TRUE"
+      return targetValue
+    else:
+      return targetValue
+  return targetValue
+
 # 求人一覧を取得
 def aresort_page_list(arDateKey):
   arPNumber = 1
@@ -125,6 +156,7 @@ def aresort_page_detail(arAfDtlLink, arDateKey):
   arDetailSoup = BeautifulSoup(arDetailHtml.text, 'html.parser')
   getWorkInfo = get_work_info
   getTreatmentInfo = get_treatment_info
+  getMealInfo = get_meal_info
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
   arTitle = arDetailSoup.title.string # タイトル
@@ -132,26 +164,21 @@ def aresort_page_detail(arAfDtlLink, arDateKey):
   arOccupation = re.search(r"<h3>([\s\S]*?)<\/h3>", str(arDetailSoup)) # 職種
   arTerm = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup)) # 勤務期間
   arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(arDetailSoup)) # 給与
-  if (".dqQ3_nx2-_" in str(arDetailSoup)): # 個室
+  if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(arDetailSoup)): #個室
     arDormitory = "TRUE"
   else:
     arDormitory = "FALSE"
   arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(arDetailSoup)) # 画像
   arTime = getWorkInfo(str(arDetailSoup), "勤務時間") # 勤務時間
-  print("勤務時間は" + arTime)
   arTreatment = getTreatmentInfo(str(arDetailSoup), "福利厚生") # 待遇
-  print("待遇は" + arTreatment)
   arJobDesc = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(arDetailSoup)) # 仕事内容
   # resorn用のパーマリンク作成
   arUrlNum = re.search(r"(\d+)", str(arAfDtlLink))
   arPermaLink = "detail-alpha-" + str(arUrlNum[1])
   # 食事
-  if (re.search(r"<th>食事<\/th>\s*<td>[\s\S]*?自己負担なし[\s\S]*?<\/td>", str(arDetailSoup))):
-    arMeal = "TRUE"
-  else:
-    arMeal = "FALSE"
+  arMeal = getMealInfo(str(arDetailSoup))
   # wifi
-  if (re.search(r"<th>ネット環境<\/th>\s*<td>有<\/td>", str(arDetailSoup))):
+  if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(arDetailSoup)):
     arWifi = "TRUE"
   else:
     arWifi = "FALSE"
@@ -167,24 +194,17 @@ def aresort_page_detail(arAfDtlLink, arDateKey):
     arTransportationFee = "FALSE"
   # アフィリエイトリンク付与
   arAffiliateLink = "https://px.a8.net/svt/ejp?a8mat=2HQA4W+4NAW2Y+39C6+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.a-resort.jp%2Fresort%2Fankens%2Fview%2F%3Fid%3D" + str(arUrlNum[1])
-
-  #print("福利厚生は" + arTreatment[1]) TODO:
-
-
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
   # -------------------- 【開始】取得した画像をサーバーに保存する --------------------
   dV.save_image("a-resort", arHomeUrl + arPicture[1], arPermaLink)
   # -------------------- 【終了】取得した画像をサーバーに保存する --------------------
 
-
-
   # "sc_daily"テーブルの実行
-  #usDaily.tb_upsert_sc_daily(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime[1], arTreatment[1], arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
+  usDaily.tb_upsert_sc_daily(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime, arTreatment, arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
 
   # "wordpress用のテーブルに反映"
-  #toWp.upsert_wp_table(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime[1], arTreatment[1], arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
-
+  toWp.upsert_wp_table(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime, arTreatment, arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
 
 # 関数を実行
 aresort_page_list(arDateKey)
