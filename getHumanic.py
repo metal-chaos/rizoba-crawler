@@ -19,10 +19,17 @@ listUrl = "https://www.rizoba.com/search/result/?page="
 huDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
 
-# （完）求人一覧を取得するメソッド
 def humanic_page_list(huDateKey):
+  """
+  Get datas in job lists from humanic!
+
+  Parameters
+  ----------
+  huDateKey : str
+    The day that started crawling
+  """
   pNumber = 1
-  
+
   while True:
     print("ヒューマニック求人一覧「" + str(pNumber) + "」の情報を取得中…")
     sleep(random.randint(1,8))
@@ -33,8 +40,8 @@ def humanic_page_list(huDateKey):
     except:
       dV.exception_error_log()
 
-    # （完）求人詳細へのリンクを全て取得
-    allDtlLink = soup.findAll("a", class_ = "item_section_inner link_hover_opacity")
+    # 求人詳細へのリンクを全て取得
+    allDtlLink = soup.findAll("a", class_ = "button_ellipse skin_blue link_hover_opacity ga_link_event")
     for eachDtlLink in allDtlLink:
       bfDtlLink = re.search(r"(/work/\d+/)", str(eachDtlLink))
       afDtlLink = homeUrl + bfDtlLink.group(0)
@@ -44,14 +51,14 @@ def humanic_page_list(huDateKey):
       except:
         dV.exception_error_log()
 
-    # （完）ページネーションから処理終了か判断、item_page_linkへのリンクを全て取得
+    # ページネーションから処理終了か判断、item_page_linkへのリンクを全て取得
     if soup.find("li", class_ = "item_page skin_arrow_next"):
       pNumber += 1
     else:
       decidePP.decide_private_publish(huDateKey)
       break
 
-# （完）求人詳細を取得するメソッド
+# 求人詳細を取得するメソッド
 def humanic_page_detail(afDtlLink, huDateKey):
   print("ヒューマニック求人詳細「" + afDtlLink + "」の情報を取得中…")
   sleep(random.randint(1,8))
