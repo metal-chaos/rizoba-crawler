@@ -14,20 +14,14 @@ import traceback,sys
 import random
 import settings
 
+"""
+Global variable
+"""
 homeUrl = settings.HU_HOME_URL
 listUrl = "https://www.rizoba.com/search/result/?page="
 huDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-
-def humanic_page_list(huDateKey):
-  """
-  Get datas in job lists from humanic!
-
-  Parameters
-  ----------
-  huDateKey : str
-    The day that started crawling
-  """
+def humanic_page_list():
   pNumber = 1
 
   while True:
@@ -47,7 +41,7 @@ def humanic_page_list(huDateKey):
       afDtlLink = homeUrl + bfDtlLink.group(0)
       # 求人詳細の実行
       try:
-        humanic_page_detail(afDtlLink, huDateKey)
+        humanic_page_detail(afDtlLink)
       except:
         dV.exception_error_log()
 
@@ -58,64 +52,94 @@ def humanic_page_list(huDateKey):
       decidePP.decide_private_publish(huDateKey)
       break
 
-# 求人詳細を取得するメソッド
-def humanic_page_detail(afDtlLink, huDateKey):
+def humanic_page_detail(afDtlLink):
+  """
+  求人詳細を取得
+
+  Parameters
+  ----------
+  afDtlLink : str
+    求人詳細ページのURL
+  """
   print("ヒューマニック求人詳細「" + afDtlLink + "」の情報を取得中…")
   sleep(random.randint(1,8))
 
   detailHtml = requests.get(afDtlLink, timeout = 5)
   detailSoup = BeautifulSoup(detailHtml.text, 'html.parser')
+  datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  title = detailSoup.title.string # タイトル
-  place = re.search(r"<dt class=\"item_info_term\">\s*勤務地\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup)) # 勤務地
-  occupation = re.search(r"<dt class=\"item_info_term\">\s*職種\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup)) # 職種
-  term = re.search(r"<dt class=\"item_info_term\">\s*期間\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup)) # 勤務期間
-  salary = re.search(r"<dt class=\"item_info_term\">\s*(時給|日給|月給)\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)(円)\s*<\/dd>", str(detailSoup)) # 給与
-  dormitory = re.search(r"<dt class=\"item_info_term\">\s*寮の種類\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup)) # 個室
-  if ("個室" in dormitory[1]):
-    dormitory = "TRUE"
-  else:
-    dormitory = "FALSE"
-  picture = re.search(r"<span class=\"item_slide_image\">\s*<img alt=\"[\s\S]*?\" src=\"([\s\S]*?)\"", str(detailSoup)) # 画像
-  time = re.search(r"<dd class=\"item_info_description work_time_unit\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 勤務時間（pタグ消したい）
-  treatment = re.search(r"<dt class=\"item_info_term\">\s*福利厚生\s*<\/dt>\s*<dd class=\"item_info_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 待遇
-  jobDesc = re.search(r"<dt class=\"item_info_lead_term\">\s*仕事内容\s*<\/dt>\s*<dd class=\"item_info_lead_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup)) # 仕事内容
+  # タイトル
+  datas['title'] = detailSoup.title.string
+
+  # 勤務地
+  datas['place'] = re.search(r"<dt class=\"item_info_term\">\s*勤務地\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup))[1]
+
+  # 職種
+  datas['occupation'] = re.search(r"<dt class=\"item_info_term\">\s*職種\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup))[1]
+
+  # 勤務期間
+  datas['term'] = re.search(r"<dt class=\"item_info_term\">\s*期間\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup))[1]
+
+  # 給与
+  salary = re.search(r"<dt class=\"item_info_term\">\s*(時給|日給|月給)\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)(円)\s*<\/dd>", str(detailSoup))
+  # 給与の種類
+  datas['kindOfSalary'] = salary[1]
+  # 給与（数値）
+  datas['numOfSalary'] = salary[2]
+  # 給与（掲載用）
+  datas['salary'] = salary[1] + salary[2] + "円"
+
+  # 個室
+  dormitory = re.search(r"<dt class=\"item_info_term\">\s*寮の種類\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", str(detailSoup))
+  datas['dormitory'] = "TRUE" if ("個室" in dormitory[1]) else "FALSE"
+
+  # 画像
+  datas['picture'] = re.search(r"<span class=\"item_slide_image\">\s*<img alt=\"[\s\S]*?\" src=\"([\s\S]*?)\"", str(detailSoup))[1]
+
+  # 勤務時間
+  datas['time'] = re.search(r"<dd class=\"item_info_description work_time_unit\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup))[1]
+
+  # 待遇
+  datas['treatment'] = re.search(r"<dt class=\"item_info_term\">\s*福利厚生\s*<\/dt>\s*<dd class=\"item_info_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup))[1]
+
+  # 仕事内容
+  datas['jobDesc'] = re.search(r"<dt class=\"item_info_lead_term\">\s*仕事内容\s*<\/dt>\s*<dd class=\"item_info_lead_description\">\s*([\s\S]*?)\s*<\/dd>", str(detailSoup))[1]
+
+  # パーマリンク
   urlNum = re.search(r"(\d+)", str(afDtlLink))
-  permaLink = "detail-humanic-" + str(urlNum[1])
+  datas['permaLink'] = "detail-humanic-" + str(urlNum[1])
+
   # 食事
-  if ("食費無料" in str(detailSoup)):
-    meal = "TRUE"
-  else:
-    meal = "FALSE"
+  datas['meal'] = "TRUE" if ("食費無料" in str(detailSoup)) else "FALSE"
+
   # wifi
-  if ("item_merit skin_merit_m2_11" in str(detailSoup)):
-    wifi = "TRUE"
-  else:
-    wifi = "FALSE"
+  datas['wifi'] = "TRUE" if ("食費無料" in str(detailSoup)) else "FALSE"
+
   # 温泉
-  if ("item_merit skin_merit_m2_16" in str(detailSoup)):
-    spa = "TRUE"
-  else:
-    spa = "FALSE"
+  datas['spa'] = "TRUE" if ("item_merit skin_merit_m2_16" in str(detailSoup)) else "FALSE"
+
   # 交通費支給
-  if ("交通費支給" in str(detailSoup)):
-    transportationFee = "TRUE"
-  else:
-    transportationFee = "FALSE"
+  datas['transportationFee'] = "TRUE" if ("交通費支給" in str(detailSoup)) else "FALSE"
+
   # アフィリエイトリンク付与
-  affiliateLink = "https://px.a8.net/svt/ejp?a8mat=2ZJJHC+5VYEGA+42GS+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.rizoba.com%2Fwork%2F" + str(urlNum[1]) + "%2F"
+  datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2ZJJHC+5VYEGA+42GS+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.rizoba.com%2Fwork%2F" + str(urlNum[1]) + "%2F"
+
+  # キャンペーン
+  datas['campaign'] = "FALSE"
+
+  # 会社
+  datas['company'] = "humanic"
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
-  # -------------------- 【開始】取得した画像をサーバーに保存する --------------------
-  dV.save_image("humanic", picture[1], permaLink)
-  # -------------------- 【終了】取得した画像をサーバーに保存する --------------------
+  # 取得した画像をサーバーに保存する
+  dV.save_image(datas)
 
   # "sc_daily"テーブルの実行
-  usDaily.tb_upsert_sc_daily(afDtlLink, title, permaLink, dormitory, picture[1], occupation[1], salary[1], salary[2], salary[1] + salary[2] + "円", term[1], time[1], treatment[1], jobDesc[1], meal, transportationFee, wifi, spa, place[1], affiliateLink, "FALSE", "humanic", huDateKey)
+  usDaily.tb_upsert_sc_daily(afDtlLink, huDateKey, datas)
 
   # wordpress用のテーブルに反映
-  toWp.upsert_wp_table(afDtlLink, title, permaLink, dormitory, picture[1], occupation[1], salary[1], salary[2], salary[1] + salary[2] + "円", term[1], time[1], treatment[1], jobDesc[1], meal, transportationFee, wifi, spa, place[1], affiliateLink, "FALSE", "humanic", huDateKey)
+  toWp.upsert_wp_table(afDtlLink, huDateKey, datas)
 
 # 関数を実行
-humanic_page_list(huDateKey)
+humanic_page_list()

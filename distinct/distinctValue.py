@@ -103,9 +103,9 @@ def exception_error_log():
 # -----------------------------------
 # 概要：取得した画像を指定のディレクトリに保存するメソッド
 # -----------------------------------
-def save_image(companyName, companyPicturePath, picturePermaLink):
-  saveImagePath = settings.SAVE_IMAGE_PATH + companyName + "/" + picturePermaLink + ".jpg"
-  reImage = requests.get(companyPicturePath)
+def save_image(datas):
+  saveImagePath = settings.SAVE_IMAGE_PATH + datas['company'] + "/" + datas['permaLink'] + ".jpg"
+  reImage = requests.get(datas['picture'])
   with open(saveImagePath, mode = "wb") as f:
     f.write(reImage.content)
 

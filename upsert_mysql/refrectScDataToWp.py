@@ -1,7 +1,3 @@
-# -----------------------------------
-# 概要：スクレイピングデータをWordpressのテーブルに格納する処理。
-# -----------------------------------
-
 # coding: UTF-8
 import traceback,sys
 from time import sleep
@@ -10,7 +6,14 @@ from distinct import distinctValue as dV
 import connection
 import settings
 
-def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccupation, upSalary1, upSalary2, upSalary3, upTerm, upTime, upTreatment, upJobDesc, upMeal, upTransportationFee, upWifi, upSpa, upPlace, upAffiliateLink, upCampaign, upCompanyName, dateKey):
+def upsert_wp_table(dtlLink, dateKey, datas):
+  """Upsert values into for 'wordpress' table
+
+  Args:
+    dtlLink (str): URL of a job detail page
+    dateKey (str): The day that started crawling
+    datas (array): Datas that have already crawled and getted
+  """
   mysqlConnect = connection.connect()
   conn = mysqlConnect.connect_mysql()
   cur = conn.cursor()
@@ -24,63 +27,63 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
   now = datetime.datetime.now()
 
   with cur as cursor:
-    print("「" + upPermaLink + "」の格納を開始…!")
+    print("「" + datas['permaLink'] + "」の格納を開始…!")
     try:
       # post_categoryの判別処理
-      upCategorySlug = dV.post_category(cur, upPlace, cursor)
+      upCategorySlug = dV.post_category(cur, datas['place'], cursor)
       # occupacion_tagsの判別処理
-      upOccupationSlug = dV.distinct_occupation_tags(cur, upOccupation, cursor)
+      occupationSlug = dV.distinct_occupation_tags(cur, datas['occupation'], cursor)
       # tax_salaryの判別処理
-      upTaxSalary = dV.distinct_tax_salary(upSalary1, int(upSalary2))
+      upTaxSalary = dV.distinct_tax_salary(datas['kindOfSalary'], int(datas['numOfSalary']))
       # icon_highincome_fieldの判別処理
       upIconHighIncome = dV.distinct_icon_highincome_field(upTaxSalary)
       # menu_orderの値の判別処理（あとで変更したい）
       upMenuOrder = dV.distinct_menu_order()
       # RESORNスコア算出の処理
-      upResornScore = dV.resorn_score(upDormitory, upCampaign, upMeal, upTransportationFee, upWifi, upSpa, upSalary1, int(upSalary2))
+      upResornScore = dV.resorn_score(datas['dormitory'], datas['campaign'], datas['meal'], datas['transportationFee'], datas['wifi'], datas['spa'], datas['kindOfSalary'], int(datas['numOfSalary']))
       # int_salary_fieldの判別処理
-      upIntSalaryField = dV.distinct_int_salary_field(upSalary1, int(upSalary2))
+      upIntSalaryField = dV.distinct_int_salary_field(datas['kindOfSalary'], int(datas['numOfSalary']))
 
       # ------------------------------------------------
       # ①"wp_posts"テーブルに求人情報をUPSERT
       # ------------------------------------------------
       # post_nameが存在するか確認する
       postsSql = "SELECT * FROM wp_posts WHERE post_name = %s"
-      cursor.execute(postsSql, (upPermaLink))
+      cursor.execute(postsSql, (datas['permaLink']))
       # post_nameが存在するならUPDATE
       if cursor.fetchone():
         postsSql = "UPDATE wp_posts SET post_content = %s, post_title = %s, post_excerpt = %s, menu_order = %s, post_modified = %s, post_modified_gmt = %s WHERE post_name = %s"
-        cursor.execute(postsSql, ("[job_detail_text]", upTitle, upJobDesc, upMenuOrder, now, now, upPermaLink))
+        cursor.execute(postsSql, ("[job_detail_text]", datas['title'], datas['jobDesc'], upMenuOrder, now, now, datas['permaLink']))
       # post_nameが存在しないならINSERT INTO
       else:
         postsSql = "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, comment_status, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, guid, menu_order) \
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(postsSql, (1, now, now, "[job_detail_text]", upTitle, upJobDesc, "closed", upPermaLink, "", "", now, now, "", upLink, upMenuOrder))
+        cursor.execute(postsSql, (1, now, now, "[job_detail_text]", datas['title'], datas['jobDesc'], "closed", datas['permaLink'], "", "", now, now, "", dtlLink, upMenuOrder))
 
       # "wp_postmeta"テーブルの投稿ID用に再度SELECTで取得
       postsSql = "SELECT * FROM wp_posts WHERE post_name = %s"
-      cursor.execute(postsSql, (upPermaLink))
+      cursor.execute(postsSql, (datas['permaLink']))
       postsValue = cursor.fetchone()
 
       # ------------------------------------------------
       # ②"wp_postmeta"テーブルにUPSERT
       # ------------------------------------------------
       scDailyValue = {
-      'icon_dormitory_field': upDormitory,
+      'icon_dormitory_field': datas['dormitory'],
       'icon_highIncome_field': upIconHighIncome,
-      'icon_campaign_field': upCampaign,
-      'company_field': upCompanyName,
-      'occupation_field': upOccupation,
-      'salary_field': upSalary3,
-      'term_field': upTerm,
-      'time_field': upTime,
-      'treatment_field': upTreatment,
-      'jobDescription_field': upJobDesc,
-      'affiliatelink_field': upAffiliateLink,
-      'icon_meal_field': upMeal,
-      'icon_transportationFee_field': upTransportationFee,
-      'icon_wifi_field': upWifi,
-      'icon_spa_field': upSpa,
+      'icon_campaign_field': datas['campaign'],
+      'company_field': datas['company'],
+      'occupation_field': datas['occupation'],
+      'salary_field': datas['salary'],
+      'term_field': datas['term'],
+      'time_field': datas['time'],
+      'treatment_field': datas['treatment'],
+      'jobDescription_field': datas['jobDesc'],
+      'affiliatelink_field': datas['affiliateLink'],
+      'icon_meal_field': datas['meal'],
+      'icon_transportationFee_field': datas['transportationFee'],
+      'icon_wifi_field': datas['wifi'],
+      'icon_spa_field': datas['spa'],
       'int_salary_field': upIntSalaryField,
       'resorn_score_field': upResornScore,
       }
@@ -102,7 +105,7 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       # ③"wp_terms"テーブルからslugに紐づくterm_idを取得
       # ------------------------------------------------
       termsSql = "SELECT * FROM wp_terms WHERE slug = %s OR slug = %s OR slug = %s OR slug = %s"
-      cursor.execute(termsSql, (upCategorySlug, upOccupationSlug, upTaxSalary, upCompanyName))
+      cursor.execute(termsSql, (upCategorySlug, occupationSlug, upTaxSalary, datas['company']))
       termsValues = cursor.fetchall()
 
       # "wp_term_relationships"テーブルに格納されているobject_idと記事IDが同一のものを削除（⑤の処理で必要）
@@ -134,18 +137,18 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       # ⑥"wp_posts"テーブルに画像情報をUPSERT
       # ------------------------------------------------
       # 画像へのリンクを変数に格納
-      upImagePermaLink = settings.SAVE_IMAGE_PERMALINK_PATH + upCompanyName + "/" + upPermaLink + ".jpg"
+      upImagePermaLink = settings.SAVE_IMAGE_PERMALINK_PATH + datas['company'] + "/" + datas['permaLink'] + ".jpg"
       # post_nameが存在するか確認する
       postsImageSql = "SELECT * FROM wp_posts WHERE post_name = %s"
-      cursor.execute(postsImageSql, (upPermaLink + ".jpg"))
+      cursor.execute(postsImageSql, (datas['permaLink'] + ".jpg"))
       # post_nameが存在しないならINSERT（存在する場合は何もしない）
       if not cursor.fetchone():
         postsImageSql = "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_status, comment_status, ping_status, post_name, post_modified, post_modified_gmt, post_parent, guid, menu_order, post_type, post_mime_type) \
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(postsImageSql, (1, now, now, "", upPermaLink + ".jpg", "publish", "closed", "closed", upPermaLink + ".jpg", now, now, postsValue['ID'], upImagePermaLink, 0, "attachment", "image/jpeg"))
+        cursor.execute(postsImageSql, (1, now, now, "", datas['permaLink'] + ".jpg", "publish", "closed", "closed", datas['permaLink'] + ".jpg", now, now, postsValue['ID'], upImagePermaLink, 0, "attachment", "image/jpeg"))
       # "wp_postmeta"テーブルの画像ID用に再度SELECTで取得
       postsImageSql = "SELECT * FROM wp_posts WHERE post_name = %s"
-      cursor.execute(postsImageSql, (upPermaLink + ".jpg"))
+      cursor.execute(postsImageSql, (datas['permaLink'] + ".jpg"))
       postsImageValue = cursor.fetchone()
       # ------------------------------------------------
       # ⑦"wp_postmeta"テーブルに_thumbnail_idをINSERT（存在する場合は何もしない）
@@ -159,7 +162,7 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
       # ⑧"wp_postmeta"テーブルに_wp_attached_fileをINSERT（存在する場合は何もしない）
       # ------------------------------------------------
       postmetaThumbSql = "SELECT * FROM wp_postmeta WHERE post_id = %s AND meta_key = %s AND meta_value = %s"
-      followUploadsPath = "crawled-images/" + upCompanyName + "/" + upPermaLink + ".jpg"
+      followUploadsPath = "crawled-images/" + datas['company'] + "/" + datas['permaLink'] + ".jpg"
       cursor.execute(postmetaThumbSql, (postsImageValue['ID'], "_wp_attached_file", followUploadsPath))
       if not cursor.fetchone():
         postmetaThumbSql = "INSERT INTO wp_postmeta (post_id, meta_key, meta_value) VALUES (%s, %s, %s)"
@@ -167,9 +170,9 @@ def upsert_wp_table(upLink, upTitle, upPermaLink, upDormitory, upPicture, upOccu
 
       # オートコミットじゃないので、明示的にコミットを書く必要がある
       conn.commit()
-      print("「" + upPermaLink + "」の格納完了(^^)やったぜ！")
+      print("「" + datas['permaLink'] + "」の格納完了(^^)やったぜ！")
     except:
-      print("「" + upPermaLink + "」の格納失敗！")
+      print("「" + datas['permaLink'] + "」の格納失敗！")
       dV.exception_error_log()
     finally:
       conn.close()
