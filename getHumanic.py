@@ -53,14 +53,12 @@ def humanic_page_list():
       break
 
 def humanic_page_detail(afDtlLink):
-  """
-  求人詳細を取得
+  """Get information from a job detail page
 
-  Parameters
-  ----------
-  afDtlLink : str
-    求人詳細ページのURL
+  Args:
+    afDtlLink (str): URL of a job detail page
   """
+
   print("ヒューマニック求人詳細「" + afDtlLink + "」の情報を取得中…")
   sleep(random.randint(1,8))
 
