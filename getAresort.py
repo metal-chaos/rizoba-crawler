@@ -14,62 +14,74 @@ import traceback,sys
 import random
 import settings
 
-arHomeUrl = settings.AR_HOME_URL
-arListUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
-arDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
+"""
+Global variable
+"""
+homeUrl = settings.AR_HOME_URL
+listUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
+dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-###########################
-# 概要: 「お仕事詳細情報」テーブルの中身を取得
-# detailSoup: ページ全体のデータ
-# kindOfElement: 仕事内容のタイトル
-# targetValue: 仕事内容の中身
-###########################
 def get_work_info(detailSoup, kindOfElement):
-    # 勤務時間があるか検索
-    targetValue = ""
-    headElement = "<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + "<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
-    addElement = "\s*?<tr>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
-    getDataElement = "<td [class=]?[\s\S]*colspan=\"[0-9]*\">\s*([\s\S]*)<\/td>"
-    newLine = "[\s\S]*"
-    result = re.search(r"<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + r"<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>", detailSoup)
+  """Get information from 'お仕事詳細情報'
 
-    if (result):
-      addCountForHead = addCountForData = addCountForValue = int(result[1]) - 1
-      entireElement = headElement
-      getAllDataElement = getDataElement
+  Args:
+    detailSoup (str): URL of a job detail page
+    kindOfElement (str): Title of the job
+  """
 
-      # （rowspanの数-1）分の正規表現を足す
-      while addCountForHead > 0:
-        addCountForHead += -1
-        entireElement += addElement
+  # 勤務時間があるか検索
+  targetValue = ""
+  headElement = "<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + "<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
+  addElement = "\s*?<tr>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
+  getDataElement = "<td [class=]?[\s\S]*colspan=\"[0-9]*\">\s*([\s\S]*)<\/td>"
+  newLine = "[\s\S]*"
+  result = re.search(r"<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + r"<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>", detailSoup)
 
-      # 仕事内容の中身を取得
-      getArrayValues = re.search(r"" + entireElement + r"", detailSoup)
-      getValue = getArrayValues[0]
+  if (result):
+    addCountForHead = addCountForData = addCountForValue = int(result[1]) - 1
+    entireElement = headElement
+    getAllDataElement = getDataElement
 
-      # （rowspanの数-1）分の正規表現を足す
-      while addCountForData > 0:
-        addCountForData += -1
-        getAllDataElement += newLine + getDataElement
-      dataValues = re.search(r"" + getAllDataElement + r"", getValue)
+    # （rowspanの数-1）分の正規表現を足す
+    while addCountForHead > 0:
+      addCountForHead += -1
+      entireElement += addElement
 
-      targetValue = dataValues.group(1)
-      # （rowspanの数-1）分のマッチオブジェクトがあれば<br>で繋ぐ
-      if (addCountForValue > 0):
-        while addCountForValue > 0:
-          targetValue += "<br>" + dataValues.group(addCountForValue + 1)
-          addCountForValue += -1
-    return targetValue
+    # 仕事内容の中身を取得
+    getArrayValues = re.search(r"" + entireElement + r"", detailSoup)
+    getValue = getArrayValues[0]
 
-###########################
-# 概要: 「福利厚生」テーブルの中身を取得（汎用性あり）
-###########################
+    # （rowspanの数-1）分の正規表現を足す
+    while addCountForData > 0:
+      addCountForData += -1
+      getAllDataElement += newLine + getDataElement
+    dataValues = re.search(r"" + getAllDataElement + r"", getValue)
+
+    targetValue = dataValues.group(1)
+    # （rowspanの数-1）分のマッチオブジェクトがあれば<br>で繋ぐ
+    if (addCountForValue > 0):
+      while addCountForValue > 0:
+        targetValue += "<br>" + dataValues.group(addCountForValue + 1)
+        addCountForValue += -1
+  return targetValue
+
 def get_treatment_info(detailSoup, kindOfElement):
+  """Get information from '福利厚生'
+
+  Args:
+    detailSoup (str): URL of a job detail page
+    kindOfElement (str): Title of the job
+  Returns:
+    targetValue (str): description of welfare
+  """
+
   targetValue = ""
   elementName = []
+
   # 引数により取得するthの名前を変更
   if (kindOfElement == "福利厚生"):
     elementNames = ["交通費", "社会保険", "特典"]
+
   # searchして取得した各属性をtargetValueに格納
   for elementName in elementNames:
     getElement = r"<th scope=\"row\">" + elementName + r"<\/th>\s*?<td>\s*?([\s\S]*?)<\/td>"
@@ -78,14 +90,16 @@ def get_treatment_info(detailSoup, kindOfElement):
       targetValue += elementName + "：" + result.group(1)
   return targetValue
 
-###########################
-# 概要: 「生活環境」テーブルの中身を取得（※食事支給）
-# パターン別
-# ①「有」で数字が「1」の場合はTRUE
-# ② 「有」で数字が「2」の場合かつ「備考」に「円」が含まれていない場合はTRUE
-# ③それ以外はFALSE
-###########################
 def get_meal_info(detailSoup):
+  """Get information of '食事支給'
+  ①「有」で数字が「1」の場合はTRUE
+  ② 「有」で数字が「2」の場合かつ「備考」に「円」が含まれていない場合はTRUE
+  ③それ以外はFALSE
+
+  Args:
+    detailSoup (str): URL of a job detail page
+  """
+
   targetValue = "FALSE"
   headElement = "<th rowspan=\"([0-9]*?)\" scope=\"row\">食事支給<\/th>\s*?<td( class=\"text-center br_dot\")?( style=\"width: 30px;\")?>\s*?([\s\S]*?)\s*?<\/td>"
   addElement = "[\s\S]*?<td class=\"br_dot\">備考<\/td>\s*?<td colspan=\"[0-9]*?\">([\s\S]*?)<\/td>[\s\S]*?ネット環境"
@@ -95,116 +109,139 @@ def get_meal_info(detailSoup):
   headResult = re.search(headElement, detailSoup)
   remarksResult = re.search(remarksElement, detailSoup)
 
-  if (headResult.group(1).strip() == 1):
-    if (headResult.group(4).strip() == "有"):
-      targetValue = "TRUE"
-      return targetValue
-    else:
-      return targetValue
-  if (int(headResult.group(1).strip()) >= 2):
-    if (headResult.group(4).strip() == "有" and not ("円" in remarksResult.group(5).strip())):
-      targetValue = "TRUE"
-      return targetValue
-    else:
-      return targetValue
-  return targetValue
+  if ((headResult.group(1).strip() == 1 and headResult.group(4).strip() == "有"
+    or int(headResult.group(1).strip()) >= 2 and headResult.group(4).strip() == "有" and not ("円" in remarksResult.group(5).strip()))):
+    return "TRUE"
+  else:
+    return "FALSE"
 
-# 求人一覧を取得
-def aresort_page_list(arDateKey):
-  arPNumber = 1
+def aresort_page_list():
+  """
+  Get information from job lists
+  """
+
+  pNumber = 1
 
   while True:
-    if arPNumber == 11 or arPNumber == 31:
-      arPNumber += 3
-    print("アルファ求人一覧「" + str(arPNumber) + "」ページ目の情報を取得中…")
+    if pNumber == 11 or pNumber == 31:
+      pNumber += 3
+    print("アルファ求人一覧「" + str(pNumber) + "」ページ目の情報を取得中…")
     sleep(random.randint(1,8))
 
     try:
-      arHtml = requests.get(arListUrl + str(arPNumber), timeout = 30)
+      arHtml = requests.get(listUrl + str(pNumber), timeout = 30)
       arSoup = BeautifulSoup(arHtml.text, 'html.parser')
     except:
       dV.exception_error_log()
 
     # 求人詳細へのリンクを全て取得
-    arAllDtlLink = arSoup.select('div.works_list_link > a')
-    for arEachDtlLink in arAllDtlLink:
-      arBfDtlLink = re.search(r"(\/resort\/ankens\/view/\?id=\d+)", str(arEachDtlLink))
-      arAfDtlLink = arHomeUrl + arBfDtlLink.group(0)
+    allDtlLink = arSoup.select('div.works_list_link > a')
+    for eachDtlLink in allDtlLink:
+      bfDtlLink = re.search(r"(\/resort\/ankens\/view/\?id=\d+)", str(eachDtlLink))
+      afDtlLink = homeUrl + bfDtlLink.group(0)
       # 求人詳細の実行
       try:
-        aresort_page_detail(arAfDtlLink, arDateKey)
+        aresort_page_detail(afDtlLink)
       except:
         dV.exception_error_log()
 
     # ページネーションから処理終了か判断、item_page_linkへのリンクを全て取得
-    if arPNumber == 1:
-      arPNumber += 1
+    if pNumber == 1:
+      pNumber += 1
     else:
       forReLink = arSoup.findAll("a", title= "Last")[1].text.translate(str.maketrans({"[": None, "]": None})) # 最後の番号を取得
-      if int(forReLink) > arPNumber:
-        arPNumber += 1
+      if int(forReLink) > pNumber:
+        pNumber += 1
       else:
-        decidePP.decide_private_publish(arDateKey)
+        decidePP.decide_private_publish(dateKey)
         break
 
 # 求人詳細を取得
-def aresort_page_detail(arAfDtlLink, arDateKey):
-  print("アルファ求人詳細「" + arAfDtlLink + "」の情報を取得中…")
+def aresort_page_detail(afDtlLink):
+  """Get information from detail pages
+
+  Args:
+    afDtlLink (str): URL of a job detail page
+  """
+  print("アルファ求人詳細「" + afDtlLink + "」の情報を取得中…")
   sleep(random.randint(1,8))
 
-  arDetailHtml = requests.get(arAfDtlLink, timeout = 5)
+  arDetailHtml = requests.get(afDtlLink, timeout = 5)
   arDetailSoup = BeautifulSoup(arDetailHtml.text, 'html.parser')
-  getWorkInfo = get_work_info
-  getTreatmentInfo = get_treatment_info
-  getMealInfo = get_meal_info
+  datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  arTitle = arDetailSoup.title.string # タイトル
-  arPlace = re.search(r"<th>勤務地<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup)) # 勤務地
-  arOccupation = re.search(r"<h3>([\s\S]*?)<\/h3>", str(arDetailSoup)) # 職種
-  arTerm = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup)) # 勤務期間
-  arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(arDetailSoup)) # 給与
-  if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(arDetailSoup)): #個室
-    arDormitory = "TRUE"
-  else:
-    arDormitory = "FALSE"
-  arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(arDetailSoup)) # 画像
-  arTime = getWorkInfo(str(arDetailSoup), "勤務時間") # 勤務時間
-  arTreatment = getTreatmentInfo(str(arDetailSoup), "福利厚生") # 待遇
-  arJobDesc = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(arDetailSoup)) # 仕事内容
-  # resorn用のパーマリンク作成
-  arUrlNum = re.search(r"(\d+)", str(arAfDtlLink))
-  arPermaLink = "detail-alpha-" + str(arUrlNum[1])
+  # タイトル
+  datas['title'] = arDetailSoup.title.string
+
+  # 勤務地
+  datas['place'] = re.search(r"<th>勤務地<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+
+  # 職種
+  datas['occupation'] = re.search(r"<h3>([\s\S]*?)<\/h3>", str(arDetailSoup))[1]
+
+  # 勤務期間
+  datas['term'] = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+
+  # 給与
+  arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(arDetailSoup))
+  # 給与の種類
+  datas['kindOfSalary'] = "KindOfSalary無し"
+  # 給与（数値）
+  datas['numOfSalary'] = int(arSalary[1].replace(',', ""))
+  # 給与（掲載用）
+  datas['salary'] = "時給" + arSalary[1] + arSalary[2]
+
+  # 個室
+  datas['dormitory'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(arDetailSoup)) else "FALSE"
+
+  # 画像
+  arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(arDetailSoup))
+  datas['picture'] = homeUrl + arPicture[1]
+
+  # 勤務時間
+  datas['time'] = get_work_info(str(arDetailSoup), "勤務時間")
+
+  # 待遇
+  datas['treatment'] = get_treatment_info(str(arDetailSoup), "福利厚生")
+
+ # 仕事内容
+  datas['jobDesc'] = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+
+  # パーマリンク
+  urlNum = re.search(r"(\d+)", str(afDtlLink))
+  datas['permaLink'] = "detail-alpha-" + str(urlNum[1])
+
   # 食事
-  arMeal = getMealInfo(str(arDetailSoup))
+  datas['meal'] = get_meal_info(str(arDetailSoup))
+
   # wifi
-  if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(arDetailSoup)):
-    arWifi = "TRUE"
-  else:
-    arWifi = "FALSE"
+  datas['wifi'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(arDetailSoup)) else "FALSE"
+
   # 温泉
-  if ("/assets/resort/pc/images/page/resort/view/kodawari_icon6.jpg" in str(arDetailSoup)):
-    arSpa = "TRUE"
-  else:
-    arSpa = "FALSE"
+  datas['spa'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon6.jpg" in str(arDetailSoup)) else "FALSE"
+
   # 交通費支給
-  if ("交通費支給" in str(arDetailSoup)):
-    arTransportationFee = "TRUE"
-  else:
-    arTransportationFee = "FALSE"
+  datas['transportationFee'] = "TRUE" if ("交通費支給" in str(arDetailSoup))  else "FALSE"
+
   # アフィリエイトリンク付与
-  arAffiliateLink = "https://px.a8.net/svt/ejp?a8mat=2HQA4W+4NAW2Y+39C6+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.a-resort.jp%2Fresort%2Fankens%2Fview%2F%3Fid%3D" + str(arUrlNum[1])
+  datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2HQA4W+4NAW2Y+39C6+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.a-resort.jp%2Fresort%2Fankens%2Fview%2F%3Fid%3D" + str(urlNum[1])
+
+  # キャンペーン
+  datas['campaign'] = "TRUE"
+
+  # 会社
+  datas['company'] = "a-resort"
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
-  # -------------------- 【開始】取得した画像をサーバーに保存する --------------------
-  dV.save_image("a-resort", arHomeUrl + arPicture[1], arPermaLink)
-  # -------------------- 【終了】取得した画像をサーバーに保存する --------------------
+  # 取得した画像をサーバーに保存する
+  dV.save_image(datas)
 
   # "sc_daily"テーブルの実行
-  usDaily.tb_upsert_sc_daily(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime, arTreatment, arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
+  usDaily.tb_upsert_sc_daily(afDtlLink, dateKey, datas)
 
-  # "wordpress用のテーブルに反映"
-  toWp.upsert_wp_table(arAfDtlLink, arTitle, arPermaLink, arDormitory, arHomeUrl + arPicture[1], arOccupation[1], "KindOfSalary無し", int(arSalary[1].replace(',', "")), "時給" + arSalary[1] + arSalary[2], arTerm[1], arTime, arTreatment, arJobDesc[1], arMeal, arTransportationFee, arWifi, arSpa, arPlace[1], arAffiliateLink, "TRUE", "a-resort", arDateKey)
+  # wordpress用のテーブルに反映
+  toWp.upsert_wp_table(afDtlLink, dateKey, datas)
 
 # 関数を実行
-aresort_page_list(arDateKey)
+aresort_page_list()
