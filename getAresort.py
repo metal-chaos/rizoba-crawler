@@ -156,35 +156,35 @@ def aresort_page_list():
         decidePP.decide_private_publish(dateKey)
         break
 
-# 求人詳細を取得
 def aresort_page_detail(afDtlLink):
   """Get information from detail pages
 
   Args:
     afDtlLink (str): URL of a job detail page
   """
+
   print("アルファ求人詳細「" + afDtlLink + "」の情報を取得中…")
   sleep(random.randint(1,8))
 
-  arDetailHtml = requests.get(afDtlLink, timeout = 5)
-  arDetailSoup = BeautifulSoup(arDetailHtml.text, 'html.parser')
+  detailHtml = requests.get(afDtlLink, timeout = 5)
+  detailSoup = BeautifulSoup(detailHtml.text, 'html.parser')
   datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
   # タイトル
-  datas['title'] = arDetailSoup.title.string
+  datas['title'] = detailSoup.title.string
 
   # 勤務地
-  datas['place'] = re.search(r"<th>勤務地<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+  datas['place'] = re.search(r"<th>勤務地<\/th>\s*<td>([\s\S]*?)<\/td>", str(detailSoup))[1]
 
   # 職種
-  datas['occupation'] = re.search(r"<h3>([\s\S]*?)<\/h3>", str(arDetailSoup))[1]
+  datas['occupation'] = re.search(r"<h3>([\s\S]*?)<\/h3>", str(detailSoup))[1]
 
   # 勤務期間
-  datas['term'] = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+  datas['term'] = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(detailSoup))[1]
 
   # 給与
-  arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(arDetailSoup))
+  arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(detailSoup))
   # 給与の種類
   datas['kindOfSalary'] = "KindOfSalary無し"
   # 給与（数値）
@@ -193,36 +193,36 @@ def aresort_page_detail(afDtlLink):
   datas['salary'] = "時給" + arSalary[1] + arSalary[2]
 
   # 個室
-  datas['dormitory'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(arDetailSoup)) else "FALSE"
+  datas['dormitory'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(detailSoup)) else "FALSE"
 
   # 画像
-  arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(arDetailSoup))
+  arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(detailSoup))
   datas['picture'] = homeUrl + arPicture[1]
 
   # 勤務時間
-  datas['time'] = get_work_info(str(arDetailSoup), "勤務時間")
+  datas['time'] = get_work_info(str(detailSoup), "勤務時間")
 
   # 待遇
-  datas['treatment'] = get_treatment_info(str(arDetailSoup), "福利厚生")
+  datas['treatment'] = get_treatment_info(str(detailSoup), "福利厚生")
 
  # 仕事内容
-  datas['jobDesc'] = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(arDetailSoup))[1]
+  datas['jobDesc'] = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(detailSoup))[1]
 
   # パーマリンク
   urlNum = re.search(r"(\d+)", str(afDtlLink))
   datas['permaLink'] = "detail-alpha-" + str(urlNum[1])
 
   # 食事
-  datas['meal'] = get_meal_info(str(arDetailSoup))
+  datas['meal'] = get_meal_info(str(detailSoup))
 
   # wifi
-  datas['wifi'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(arDetailSoup)) else "FALSE"
+  datas['wifi'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(detailSoup)) else "FALSE"
 
   # 温泉
-  datas['spa'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon6.jpg" in str(arDetailSoup)) else "FALSE"
+  datas['spa'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon6.jpg" in str(detailSoup)) else "FALSE"
 
   # 交通費支給
-  datas['transportationFee'] = "TRUE" if ("交通費支給" in str(arDetailSoup))  else "FALSE"
+  datas['transportationFee'] = "TRUE" if ("交通費支給" in str(detailSoup))  else "FALSE"
 
   # アフィリエイトリンク付与
   datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2HQA4W+4NAW2Y+39C6+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.a-resort.jp%2Fresort%2Fankens%2Fview%2F%3Fid%3D" + str(urlNum[1])

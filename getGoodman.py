@@ -14,99 +14,122 @@ import traceback,sys
 import random
 import settings
 
-gdHomeUrl = settings.GD_HOME_URL
-gdListUrl1 = "https://www.resortbaito.com/search-results/?area="
-gdListUrl2 = "&extra=&top=on"
-gdDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
+listUrl1 = "https://www.resortbaito.com/search-results/?area="
+listUrl2 = "&extra=&top=on"
+dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-# （完）求人一覧を取得
-def goodman_page_list(gdDateKey):
+def goodman_page_list():
+  """
+  Get information from job lists
+  """
 
-  gdAreaLists = ['hokkaido', 'tohoku', 'kanto', 'hokuriku', 'tokai', 'kansai', 'chugoku', 'kyushu', 'okinawa']
-  for gdAreaList in gdAreaLists:
-    print("グッドマン求人一覧「" + gdAreaList + "」の情報を取得中…")
+  areaLists = ['hokkaido', 'tohoku', 'kanto', 'hokuriku', 'tokai', 'kansai', 'chugoku', 'kyushu', 'okinawa']
+  for areaList in areaLists:
+    print("グッドマン求人一覧「" + areaList + "」の情報を取得中…")
     sleep(random.randint(1,8))
 
     try:
-      gdHtml = requests.get(gdListUrl1 + gdAreaList + gdListUrl2, timeout = 30)
+      gdHtml = requests.get(listUrl1 + areaList + listUrl2, timeout = 30)
       gdSoup = BeautifulSoup(gdHtml.text, 'html.parser')
     except:
       dV.exception_error_log()
 
-    gdAllDtlLink = gdSoup.select('ul.list-baito > li > a')
-    for gdEachDtlLink in gdAllDtlLink:
-      gdAfDtlLink = re.search(r"(a href=\"(https:\/\/www\.resortbaito\.com\/\d+\/)\")", str(gdEachDtlLink))
+    allDtlLink = gdSoup.select('ul.list-baito > li > a')
+    for eachDtlLink in allDtlLink:
+      afDtlLink = re.search(r"(a href=\"(https:\/\/www\.resortbaito\.com\/\d+\/)\")", str(eachDtlLink))[2]
       try:
-        goodman_page_detail(gdAfDtlLink, gdDateKey) # 求人詳細実行
+        goodman_page_detail(afDtlLink) # 求人詳細実行
       except:
         dV.exception_error_log()
-  decidePP.decide_private_publish(gdDateKey)
+  decidePP.decide_private_publish(dateKey)
 
-# （完）求人詳細を取得
-def goodman_page_detail(gdAfDtlLink, gdDateKey):
-  print("グッドマン求人詳細「" + str(gdAfDtlLink[2]) + "」の情報を取得中…")
+def goodman_page_detail(afDtlLink):
+  """Get information from detail pages
+
+  Args:
+    afDtlLink (str): URL of a job detail page
+  """
+
+  print("グッドマン求人詳細「" + str(afDtlLink) + "」の情報を取得中…")
   sleep(random.randint(1,8))
 
-  gdDetailHtml = requests.get(gdAfDtlLink[2], timeout = 5)
-  gdDetailSoup = BeautifulSoup(gdDetailHtml.text, 'html.parser')
+  detailHtml = requests.get(afDtlLink, timeout = 5)
+  detailSoup = BeautifulSoup(detailHtml.text, 'html.parser')
+  datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  gdTitle = gdDetailSoup.title.string # タイトル
-  gdPlace = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>勤務地<\/dt>[\s\S]*?<dd>([\s\S]*?)・([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 勤務地
-  gdOccupation = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>職種<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 職種
-  gdTerm = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>働く期間<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 働く期間
-  gdSalary = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>給与<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 給与
-  gdSalaryFigure = re.search(r"[\s\S]*?(\d+)[\s\S]*?", str(gdSalary[1].replace(',', "")))
-  # ---------------- 【補足】 ----------------
-  # ①時給とか入ってるやつ：gdSalary[1]で対応可能
-  # ②数値：re.searchかな
-  # ③全て：gdSalary[1]で対応可能
-  # -----------------------------------------
+  # タイトル
+  datas['title'] = detailSoup.title.string
+
+  # 勤務地
+  gdPlace = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>勤務地<\/dt>[\s\S]*?<dd>([\s\S]*?)・([\s\S]*?)<\/dd>", str(detailSoup))
+  datas['place'] = gdPlace[1] + " " + gdPlace[2]
+
+  # 職種
+  datas['occupation'] = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>職種<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))[1]
+
+  # 働く期間
+  datas['term'] = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>働く期間<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))[1]
+
+  # 給与
+  salary = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>給与<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))
+  salaryFigure = re.search(r"[\s\S]*?(\d+)[\s\S]*?", str(salary[1].replace(',', "")))
+  # 給与の種類
+  datas['kindOfSalary'] = salary[1]
+  # 給与（数値）
+  datas['numOfSalary'] = salaryFigure[1]
+  # 給与（掲載用）
+  datas['salary'] = salary[1]
+
   # 個室
-  if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op09\.png\"\/>", str(gdDetailSoup))):
-    gdDormitory = "TRUE"
-  else:
-    gdDormitory = "FALSE"
-  gdPicture = re.search(r"<div class=\"photo\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(gdDetailSoup)) # 画像
-  gdTime = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>勤務時間<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 勤務時間
-  gdTreatment = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>待遇<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 待遇
-  gdJobDesc = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>仕事内容<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(gdDetailSoup)) # 仕事内容
-  # resorn用のパーマリンク作成
-  gdUrlNum = re.search(r"(\d+)", str(gdAfDtlLink[2]))
-  gdPermaLink = "detail-goodman-" + str(gdUrlNum[1])
+  datas['dormitory'] = "TRUE" if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op09\.png\"\/>", str(detailSoup))) else "FALSE"
+
+  # 画像
+  datas['picture'] = re.search(r"<div class=\"photo\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(detailSoup))[1]
+
+  # 勤務時間
+  datas['time'] = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>勤務時間<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))[1]
+
+  # 待遇
+  datas['treatment'] = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>待遇<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))[1]
+
+  # 仕事内容
+  datas['jobDesc'] = re.search(r"<dl class=\"conditions\">[\s\S]*?<dt>仕事内容<\/dt>[\s\S]*?<dd>([\s\S]*?)<\/dd>", str(detailSoup))[1]
+
+  # パーマリンク
+  gdUrlNum = re.search(r"(\d+)", str(afDtlLink))
+  datas['permaLink'] = "detail-goodman-" + str(gdUrlNum[1])
+
   # 食事
-  if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op05\.png\"\/>", str(gdDetailSoup))):
-    gdMeal = "TRUE"
-  else:
-    gdMeal = "FALSE"
+  datas['meal'] = "TRUE" if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op05\.png\"\/>", str(detailSoup))) else "FALSE"
+
   # wifi
-  if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op22\.png\"\/>", str(gdDetailSoup))):
-    gdWifi = "TRUE"
-  else:
-    gdWifi = "FALSE"
+  datas['wifi'] = "TRUE" if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op22\.png\"\/>", str(detailSoup))) else "FALSE"
+
   # 温泉
-  if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op19\.png\"\/>", str(gdDetailSoup))):
-    gdSpa = "TRUE"
-  else:
-    gdSpa = "FALSE"
+  datas['spa'] = "TRUE" if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op19\.png\"\/>", str(detailSoup))) else "FALSE"
+
   # 交通費支給
-  if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op07\.png\"\/>", str(gdDetailSoup))):
-    gdTransportationFee = "TRUE"
-  else:
-    gdTransportationFee = "FALSE"
+  datas['transportationFee'] = "TRUE" if (re.search(r"<ul class=\"icon\">[\s\S]*?<li><img alt=\"\" src=\"\/images\/icon\/option\/op07\.png\"\/>", str(detailSoup))) else "FALSE"
+
   # アフィリエイトリンク付与
-  gdAffiliateLink = "https://px.a8.net/svt/ejp?a8mat=2TOVB0+BE7QWA+3OHQ+BW8O2&a8ejpredirect=http%3A%2F%2Fwww.resortbaito.com%2F" + str(gdUrlNum[1])
+  datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2TOVB0+BE7QWA+3OHQ+BW8O2&a8ejpredirect=http%3A%2F%2Fwww.resortbaito.com%2F" + str(gdUrlNum[1])
+
+  # キャンペーン
+  datas['campaign'] = "TRUE"
+
+  # 会社
+  datas['company'] = "goodman"
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
-  # -------------------- 【開始】取得した画像をサーバーに保存する --------------------
-  dV.save_image("goodman", gdPicture[1], gdPermaLink)
-  # -------------------- 【終了】取得した画像をサーバーに保存する --------------------
+  # 取得した画像をサーバーに保存する
+  dV.save_image(datas)
 
   # "sc_daily"テーブルの実行
-  usDaily.tb_upsert_sc_daily(gdAfDtlLink[2], gdTitle, gdPermaLink, gdDormitory, gdPicture[1], gdOccupation[1], gdSalary[1], gdSalaryFigure[1], gdSalary[1], gdTerm[1], gdTime[1], gdTreatment[1], gdJobDesc[1], gdMeal, gdTransportationFee, gdWifi, gdSpa, gdPlace[1] + " " + gdPlace[2], gdAffiliateLink, "TRUE", "goodman", gdDateKey)
+  usDaily.tb_upsert_sc_daily(afDtlLink, dateKey, datas)
 
   # wordpress用のテーブルに反映
-  toWp.upsert_wp_table(gdAfDtlLink[2], gdTitle, gdPermaLink, gdDormitory, gdPicture[1], gdOccupation[1], gdSalary[1], gdSalaryFigure[1], gdSalary[1], gdTerm[1], gdTime[1], gdTreatment[1], gdJobDesc[1], gdMeal, gdTransportationFee, gdWifi, gdSpa, gdPlace[1] + " " + gdPlace[2], gdAffiliateLink, "TRUE", "goodman", gdDateKey)
-  
+  toWp.upsert_wp_table(afDtlLink, dateKey, datas)
+
 # 関数を実行
-goodman_page_list(gdDateKey)
+goodman_page_list()

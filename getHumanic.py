@@ -19,7 +19,7 @@ Global variable
 """
 homeUrl = settings.HU_HOME_URL
 listUrl = "https://www.rizoba.com/search/result/?page="
-huDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
+dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
 def humanic_page_list():
   pNumber = 1
@@ -39,6 +39,7 @@ def humanic_page_list():
     for eachDtlLink in allDtlLink:
       bfDtlLink = re.search(r"(/work/\d+/)", str(eachDtlLink))
       afDtlLink = homeUrl + bfDtlLink.group(0)
+
       # 求人詳細の実行
       try:
         humanic_page_detail(afDtlLink)
@@ -49,7 +50,7 @@ def humanic_page_list():
     if soup.find("li", class_ = "item_page skin_arrow_next"):
       pNumber += 1
     else:
-      decidePP.decide_private_publish(huDateKey)
+      decidePP.decide_private_publish(dateKey)
       break
 
 def humanic_page_detail(afDtlLink):
@@ -134,10 +135,10 @@ def humanic_page_detail(afDtlLink):
   dV.save_image(datas)
 
   # "sc_daily"テーブルの実行
-  usDaily.tb_upsert_sc_daily(afDtlLink, huDateKey, datas)
+  usDaily.tb_upsert_sc_daily(afDtlLink, dateKey, datas)
 
   # wordpress用のテーブルに反映
-  toWp.upsert_wp_table(afDtlLink, huDateKey, datas)
+  toWp.upsert_wp_table(afDtlLink, dateKey, datas)
 
 # 関数を実行
 humanic_page_list()
