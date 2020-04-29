@@ -124,7 +124,7 @@ def apptli_page_detail(apAfDtlLink):
   datas['transportationFee'] = "TRUE" if re.search(r"<span class=\"detailJobSummaryList__descTxt\">[\s\S]*?光熱費無料[\s\S]*?<div class=\"detailJobDetailOuter\">", str(apDetailSoup)) else "FALSE"
 
   # アフィリエイトリンク付与
-  datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2TOVB0+BLYDRE+2Z94+BW8O2&a8ejpredirect=https%3A%2F%2Fhataraku.com%2Fwork%2Fdetail%2F%3Fwork_id%3D" + str(apUrlNum[1])
+  datas['affiliateLink'] = "https://hataraku.com/work/detail?work_id=" + str(apUrlNum[1])
 
   # キャンペーン
   datas['campaign'] = "TRUE"
