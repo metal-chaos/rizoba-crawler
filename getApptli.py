@@ -21,8 +21,11 @@ apHomeUrl = settings.AP_HOME_URL
 apListUrl = "https://hataraku.com/work/search/various/submit/?type=&page="
 apDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-# 求人一覧を取得
 def apptli_page_list():
+  """
+  Get information from job lists
+  """
+
   apPNumber = 1
 
   while True:

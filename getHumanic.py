@@ -22,6 +22,10 @@ listUrl = "https://www.rizoba.com/search/result/?page="
 dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
 def humanic_page_list():
+  """
+  Get information from job lists
+  """
+
   pNumber = 1
 
   while True:
