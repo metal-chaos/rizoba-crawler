@@ -7,6 +7,7 @@ from time import sleep
 import pymysql.cursors
 import datetime
 from distinct import distinctValue as dV
+from processing import apptli
 from upsert_mysql import sc_daily as usDaily
 from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
@@ -20,6 +21,11 @@ Global variable
 apHomeUrl = settings.AP_HOME_URL
 apListUrl = "https://hataraku.com/work/search/various/submit/?type=&page="
 apDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
+
+#salary
+KIND_OF_SALARY = 0
+NUM_OF_SALARY = 1
+SALARY = 2
 
 def apptli_page_list():
   """
@@ -71,69 +77,66 @@ def apptli_page_detail(apAfDtlLink):
   datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
+  # 初期化
+  processing = apptli.Apptli(apDetailSoup, apAfDtlLink)
+
   # タイトル
-  datas['title'] = apDetailSoup.title.string
+  datas['title'] = processing.title()
 
   # 勤務地
-  apPlace = re.search(r"<span class=\"heading-list-txt_place\">\s*?<a href=\"[\s\S]*?\">([\s\S]*?)<\/a>\s*?<a href=\"[\s\S]*?\">([\s\S]*?)<\/a>", str(apDetailSoup))
-  datas['place'] = apPlace[1] + " " + apPlace[2]
+  datas['place'] = processing.place()
 
   # 職種
-  datas['occupation'] = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">職種<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">\s*?<a href=\"[\s\S]*?\">([\s\S]*?)<\/a>", str(apDetailSoup))[1]
+  datas['occupation'] = processing.occupation()
 
   # 勤務期間
-  datas['term'] = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">期間<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">([\s\S]*?)<\/span>", str(apDetailSoup))[1]
+  datas['term'] = processing.term()
 
-  # 給与
-  salary = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">(時給|日給|月給)<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">([\s\S]*?)(円[\s\S]*?)<\/span>", str(apDetailSoup))
   # 給与の種類
-  datas['kindOfSalary'] = salary[1]
+  datas['kindOfSalary'] = processing.salary(KIND_OF_SALARY)
   # 給与（数値）
-  datas['numOfSalary'] = int(salary[2].replace(',', ""))
+  datas['numOfSalary'] = processing.salary(NUM_OF_SALARY)
   # 給与（掲載用）
-  datas['salary'] = salary[1] + salary[2] + salary[3]
+  datas['salary'] = processing.salary(SALARY)
 
   # 個室
-  dormitory = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">寮<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">([\s\S]*?)<\/span>", str(apDetailSoup))
-  datas['dormitory'] = "TRUE" if ("個室" in dormitory[1]) else "FALSE"
+  datas['dormitory'] = processing.dormitory()
 
   # 画像
-  picture = re.search(r"<div class=\"list carousel-item\"><img[\s\S]*?src=\"([\s\S]*?)\"", str(apDetailSoup))
-  datas['picture'] = apHomeUrl + picture[1]
+  datas['picture'] = processing.picture()
 
   # 勤務時間
-  datas['time'] = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">勤務時間<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">([\s\S]*?)<\/span>", str(apDetailSoup))[1]
+  datas['time'] = processing.time()
 
   # 待遇
-  datas['treatment'] = re.search(r"<span class=\"detailJobSummaryList__ttlTxt\">待遇<\/span>\s*?<\/dt>\s*?<dd class=\"detailJobSummaryList__desc\">\s*?<span class=\"detailJobSummaryList__descTxt\">([\s\S]*?)<\/span>", str(apDetailSoup))[1]
+  datas['treatment'] = processing.treatment()
 
   # 仕事内容
-  datas['jobDesc'] = re.search(r"<span class=\"detailJobContent__txt\">([\s\S]*?)<\/span>", str(apDetailSoup))[1]
+  datas['jobDesc'] = processing.jobDesc()
 
   # パーマリンク
-  apUrlNum = re.search(r"(\d+)", str(apAfDtlLink))
-  datas['permaLink'] = "detail-apptli-" + str(apUrlNum[1])
+  datas['permaLink'] = processing.permaLink()
 
   # 食事
-  datas['meal'] = "TRUE" if re.search(r"<span class=\"detailJobSummaryList__descTxt\">[\s\S]*?食事無料[\s\S]*?<div class=\"detailJobDetailOuter\">", str(apDetailSoup)) else "FALSE"
+  datas['meal'] = processing.meal()
 
   # wifi
-  datas['wifi'] = "TRUE" if ("<span class=\"detailJobTraitList__txt\">ネット利用可</span>" in str(apDetailSoup)) else "FALSE"
+  datas['wifi'] = processing.wifi()
 
   # 温泉
-  datas['spa'] = "TRUE" if ("<span class=\"detailJobTraitList__txt\">温泉利用可</span>" in str(apDetailSoup)) else "FALSE"
+  datas['spa'] = processing.spa()
 
   # 交通費支給
-  datas['transportationFee'] = "TRUE" if re.search(r"<span class=\"detailJobSummaryList__descTxt\">[\s\S]*?光熱費無料[\s\S]*?<div class=\"detailJobDetailOuter\">", str(apDetailSoup)) else "FALSE"
+  datas['transportationFee'] = processing.transportationFee()
 
   # アフィリエイトリンク付与
-  datas['affiliateLink'] = "https://hataraku.com/work/detail?work_id=" + str(apUrlNum[1])
+  datas['affiliateLink'] = processing.affiliateLink()
 
   # キャンペーン
-  datas['campaign'] = "TRUE"
+  datas['campaign'] = processing.campaign()
 
   # 会社
-  datas['company'] = "apptli"
+  datas['company'] = processing.company()
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
   # 取得した画像をサーバーに保存する
