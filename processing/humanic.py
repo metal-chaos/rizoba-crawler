@@ -27,7 +27,7 @@ class Humanic:
         return re.search(r"<dt class=\"item_info_term\">\s*期間\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", self.soup)[1]
 
     def occupation(self):
-        return re.search(r"<dt class=\"item_info_term\">\s*職種\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", self.soup)[1]
+        return re.search(r"<dt class=\"item_info_term\">\s*職種\s*<\/dt>\s*<dd class=\"item_info_description\">\s*<span class=\"selector_job\">\s*(.*)\s*<\/span>", self.soup)[1]
 
     def private_room(self):
         dormitory = re.search(r"<dt class=\"item_info_term\">\s*寮の種類\s*<\/dt>\s*<dd class=\"item_info_description\">\s*(.*)\s*<\/dd>", self.soup)
