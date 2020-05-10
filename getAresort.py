@@ -7,6 +7,7 @@ from time import sleep
 import pymysql.cursors
 import datetime
 from distinct import distinctValue as dV
+from processing import aresort
 from upsert_mysql import sc_daily as usDaily
 from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
@@ -21,99 +22,10 @@ homeUrl = settings.AR_HOME_URL
 listUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
 dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-def get_work_info(detailSoup, kindOfElement):
-  """Get information from 'お仕事詳細情報'
-
-  Args:
-    detailSoup (str): URL of a job detail page
-    kindOfElement (str): Title of the job
-  """
-
-  # 勤務時間があるか検索
-  targetValue = ""
-  headElement = "<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + "<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
-  addElement = "\s*?<tr>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>"
-  getDataElement = "<td [class=]?[\s\S]*colspan=\"[0-9]*\">\s*([\s\S]*)<\/td>"
-  newLine = "[\s\S]*"
-  result = re.search(r"<tr>\s*?<th rowspan=\"([0-9]*?)\" scope=\"row\">" + kindOfElement + r"<\/th>\s*?<td (class=)?([\s\S]*?)colspan=\"[0-9]*?\">\s*?([\s\S]*?)<\/td>\s*?<\/tr>", detailSoup)
-
-  if (result):
-    addCountForHead = addCountForData = addCountForValue = int(result[1]) - 1
-    entireElement = headElement
-    getAllDataElement = getDataElement
-
-    # （rowspanの数-1）分の正規表現を足す
-    while addCountForHead > 0:
-      addCountForHead += -1
-      entireElement += addElement
-
-    # 仕事内容の中身を取得
-    getArrayValues = re.search(r"" + entireElement + r"", detailSoup)
-    getValue = getArrayValues[0]
-
-    # （rowspanの数-1）分の正規表現を足す
-    while addCountForData > 0:
-      addCountForData += -1
-      getAllDataElement += newLine + getDataElement
-    dataValues = re.search(r"" + getAllDataElement + r"", getValue)
-
-    targetValue = dataValues.group(1)
-    # （rowspanの数-1）分のマッチオブジェクトがあれば<br>で繋ぐ
-    if (addCountForValue > 0):
-      while addCountForValue > 0:
-        targetValue += "<br>" + dataValues.group(addCountForValue + 1)
-        addCountForValue += -1
-  return targetValue
-
-def get_treatment_info(detailSoup, kindOfElement):
-  """Get information from '福利厚生'
-
-  Args:
-    detailSoup (str): URL of a job detail page
-    kindOfElement (str): Title of the job
-  Returns:
-    targetValue (str): description of welfare
-  """
-
-  targetValue = ""
-  elementName = []
-
-  # 引数により取得するthの名前を変更
-  if (kindOfElement == "福利厚生"):
-    elementNames = ["交通費", "社会保険", "特典"]
-
-  # searchして取得した各属性をtargetValueに格納
-  for elementName in elementNames:
-    getElement = r"<th scope=\"row\">" + elementName + r"<\/th>\s*?<td>\s*?([\s\S]*?)<\/td>"
-    result = re.search(getElement, detailSoup)
-    if (result):
-      targetValue += elementName + "：" + result.group(1)
-  return targetValue
-
-def get_meal_info(detailSoup):
-  """Get information of '食事支給'
-  ①「有」で数字が「1」の場合はTRUE
-  ② 「有」で数字が「2」の場合かつ「備考」に「円」が含まれていない場合はTRUE
-  ③それ以外はFALSE
-
-  Args:
-    detailSoup (str): URL of a job detail page
-  """
-
-  targetValue = "FALSE"
-  headElement = "<th rowspan=\"([0-9]*?)\" scope=\"row\">食事支給<\/th>\s*?<td( class=\"text-center br_dot\")?( style=\"width: 30px;\")?>\s*?([\s\S]*?)\s*?<\/td>"
-  addElement = "[\s\S]*?<td class=\"br_dot\">備考<\/td>\s*?<td colspan=\"[0-9]*?\">([\s\S]*?)<\/td>[\s\S]*?ネット環境"
-  remarksElement = headElement + addElement
-
-  # 取得
-  headResult = re.search(headElement, detailSoup)
-  remarksResult = re.search(remarksElement, detailSoup)
-
-  if ((headResult.group(1).strip() == 1 and headResult.group(4).strip() == "有"
-    or int(headResult.group(1).strip()) >= 2 and headResult.group(4).strip() == "有" and not ("円" in remarksResult.group(5).strip()))):
-    return "TRUE"
-  else:
-    return "FALSE"
+#salary
+KIND_OF_SALARY = 0
+NUM_OF_SALARY = 1
+SALARY = 2
 
 def aresort_page_list():
   """
@@ -171,67 +83,66 @@ def aresort_page_detail(afDtlLink):
   datas = {}
 
   # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
+  # 初期化
+  processing = aresort.Aresort(detailSoup, afDtlLink)
+
   # タイトル
-  datas['title'] = detailSoup.title.string
+  datas['title'] = processing.title()
 
   # 勤務地
-  datas['place'] = re.search(r"<th>勤務地<\/th>\s*<td>([\s\S]*?)<\/td>", str(detailSoup))[1]
+  datas['place'] = processing.place()
 
   # 職種
-  datas['occupation'] = re.search(r"<h3>([\s\S]*?)<\/h3>", str(detailSoup))[1]
+  datas['occupation'] = processing.occupation()
 
   # 勤務期間
-  datas['term'] = re.search(r"<th>期間<\/th>\s*<td>([\s\S]*?)<\/td>", str(detailSoup))[1]
+  datas['term'] = processing.term()
 
-  # 給与
-  arSalary = re.search(r"<th>給与<\/th>\s*<td>([\s\S]*?)(円[\s\S]*?)<\/td>", str(detailSoup))
   # 給与の種類
-  datas['kindOfSalary'] = "KindOfSalary無し"
+  datas['kindOfSalary'] = processing.salary(KIND_OF_SALARY)
   # 給与（数値）
-  datas['numOfSalary'] = int(arSalary[1].replace(',', ""))
+  datas['numOfSalary'] = processing.salary(NUM_OF_SALARY)
   # 給与（掲載用）
-  datas['salary'] = "時給" + arSalary[1] + arSalary[2]
+  datas['salary'] = processing.salary(SALARY)
 
   # 個室
-  datas['dormitory'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon2.jpg" in str(detailSoup)) else "FALSE"
+  datas['dormitory'] = processing.dormitory()
 
   # 画像
-  arPicture = re.search(r"<div id=\"fv\">\s*<img[\s\S]*?src=\"([\s\S]*?)\"", str(detailSoup))
-  datas['picture'] = homeUrl + arPicture[1]
+  datas['picture'] = processing.picture()
 
   # 勤務時間
-  datas['time'] = get_work_info(str(detailSoup), "勤務時間")
+  datas['time'] = processing.time()
 
   # 待遇
-  datas['treatment'] = get_treatment_info(str(detailSoup), "福利厚生")
+  datas['treatment'] = processing.treatment()
 
  # 仕事内容
-  datas['jobDesc'] = re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", str(detailSoup))[1]
+  datas['jobDesc'] = processing.jobDesc()
 
   # パーマリンク
-  urlNum = re.search(r"(\d+)", str(afDtlLink))
-  datas['permaLink'] = "detail-alpha-" + str(urlNum[1])
+  datas['permaLink'] = processing.permaLink()
 
   # 食事
-  datas['meal'] = get_meal_info(str(detailSoup))
+  datas['meal'] = processing.meal()
 
   # wifi
-  datas['wifi'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in str(detailSoup)) else "FALSE"
+  datas['wifi'] = processing.wifi()
 
   # 温泉
-  datas['spa'] = "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon6.jpg" in str(detailSoup)) else "FALSE"
+  datas['spa'] = processing.spa()
 
   # 交通費支給
-  datas['transportationFee'] = "TRUE" if ("交通費支給" in str(detailSoup))  else "FALSE"
+  datas['transportationFee'] = processing.transportationFee()
 
   # アフィリエイトリンク付与
-  datas['affiliateLink'] = "https://px.a8.net/svt/ejp?a8mat=2HQA4W+4NAW2Y+39C6+BW8O2&a8ejpredirect=https%3A%2F%2Fwww.a-resort.jp%2Fresort%2Fankens%2Fview%2F%3Fid%3D" + str(urlNum[1])
+  datas['affiliateLink'] = processing.affiliateLink()
 
   # キャンペーン
-  datas['campaign'] = "TRUE"
+  datas['campaign'] = processing.campaign()
 
   # 会社
-  datas['company'] = "a-resort"
+  datas['company'] = processing.company()
   # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
 
   # 取得した画像をサーバーに保存する
