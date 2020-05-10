@@ -53,10 +53,10 @@ class Aresort:
         return Aresort.HOME_URL + picture[1]
 
     def time(self):
-        return self.__get_time()
+        return self.__normalization(self.__get_time())
 
     def treatment(self):
-        return self.__get_treatment_info()
+        return self.__normalization(self.__get_treatment_info())
 
     def jobDesc(self):
         return re.search(r"<th>仕事内容<\/th>\s*<td colspan=\"3\">([\s\S]*?)<\/td>", self.__strSoup)[1]
@@ -65,7 +65,7 @@ class Aresort:
         return "detail-alpha-" + str(self.__urlNum[1])
 
     def meal(self):
-        return self.__get_meal_info()
+        return self.__normalization(self.__get_meal_info())
 
     def wifi(self):
         return "TRUE" if ("/assets/resort/pc/images/page/resort/view/kodawari_icon8.jpg" in self.__strSoup) else "FALSE"
@@ -170,4 +170,18 @@ class Aresort:
         else:
             return "FALSE"
 
-    
+    def __normalization(self, text):
+        """
+        Do some texts to normalize
+
+        Args:
+            text (str): scraped texts
+        Returns:
+            str: normalized texts
+        """
+
+        # Add regex when it needs
+        regexs = ['<span>|</span>', '\s{2,}', '^\n']
+        for regex in regexs:
+            text = re.sub(regex, '', text)
+        return text
