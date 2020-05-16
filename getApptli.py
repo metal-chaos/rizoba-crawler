@@ -7,7 +7,7 @@ from time import sleep
 import pymysql.cursors
 import datetime
 from distinct import distinctValue as dV
-from processing import apptli
+from processing import main, apptli
 from upsert_mysql import sc_daily as usDaily
 from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
@@ -21,11 +21,6 @@ Global variable
 apHomeUrl = settings.AP_HOME_URL
 apListUrl = "https://hataraku.com/work/search/various/submit/?type=&page="
 apDateKey = datetime.datetime.now().strftime('%Y-%m-%d')
-
-#salary
-KIND_OF_SALARY = 0
-NUM_OF_SALARY = 1
-SALARY = 2
 
 def apptli_page_list():
   """
@@ -76,76 +71,18 @@ def apptli_page_detail(apAfDtlLink):
   apDetailSoup = BeautifulSoup(apDetailHtml.text, 'html.parser')
   datas = {}
 
-  # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  # 初期化
+  # 求人詳細のスクレイピング
   processing = apptli.Apptli(apDetailSoup, apAfDtlLink)
-
-  # タイトル
-  datas['title'] = processing.title()
-
-  # 勤務地
-  datas['place'] = processing.place()
-
-  # 職種
-  datas['occupation'] = processing.occupation()
-
-  # 勤務期間
-  datas['term'] = processing.term()
-
-  # 給与の種類
-  datas['kindOfSalary'] = processing.salary(KIND_OF_SALARY)
-  # 給与（数値）
-  datas['numOfSalary'] = processing.salary(NUM_OF_SALARY)
-  # 給与（掲載用）
-  datas['salary'] = processing.salary(SALARY)
-
-  # 個室
-  datas['dormitory'] = processing.dormitory()
-
-  # 画像
-  datas['picture'] = processing.picture()
-
-  # 勤務時間
-  datas['time'] = processing.time()
-
-  # 待遇
-  datas['treatment'] = processing.treatment()
-
-  # 仕事内容
-  datas['jobDesc'] = processing.jobDesc()
-
-  # パーマリンク
-  datas['permaLink'] = processing.permaLink()
-
-  # 食事
-  datas['meal'] = processing.meal()
-
-  # wifi
-  datas['wifi'] = processing.wifi()
-
-  # 温泉
-  datas['spa'] = processing.spa()
-
-  # 交通費支給
-  datas['transportationFee'] = processing.transportationFee()
-
-  # アフィリエイトリンク付与
-  datas['affiliateLink'] = processing.affiliateLink()
-
-  # キャンペーン
-  datas['campaign'] = processing.campaign()
-
-  # 会社
-  datas['company'] = processing.company()
-  # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
+  primary = main.Main()
+  datas = primary.make_processing(processing)
 
   # 取得した画像をサーバーに保存する
   dV.save_image(datas)
 
-# "sc_daily"テーブルの実行
+  # "sc_daily"テーブルの実行
   usDaily.tb_upsert_sc_daily(apAfDtlLink, apDateKey, datas)
 
-# wordpress用のテーブルに反映
+  # wordpress用のテーブルに反映
   toWp.upsert_wp_table(apAfDtlLink, apDateKey, datas)
 
 # 関数を実行

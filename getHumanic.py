@@ -7,7 +7,7 @@ from time import sleep
 import pymysql.cursors
 import datetime
 from distinct import distinctValue as dV
-from processing import humanic
+from processing import main, humanic
 from upsert_mysql import sc_daily as usDaily
 from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
@@ -21,11 +21,6 @@ Global variable
 homeUrl = settings.HU_HOME_URL
 listUrl = "https://www.rizoba.com/search/result/?page="
 dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
-
-#salary
-KIND_OF_SALARY = 0
-NUM_OF_SALARY = 1
-SALARY = 2
 
 def humanic_page_list():
   """
@@ -77,69 +72,10 @@ def humanic_page_detail(afDtlLink):
   detailSoup = BeautifulSoup(detailHtml.text, 'html.parser')
   datas = {}
 
-  # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  # 初期化
-  processing = humanic.Humanic(str(detailSoup), afDtlLink)
-
-  # タイトル
-  datas['title'] = detailSoup.title.string
-
-  # 勤務地
-  datas['place'] = processing.place()
-
-  # 職種
-  datas['occupation'] = processing.occupation()
-
-  # 勤務期間
-  datas['term'] = processing.term()
-
-  # 給与の種類
-  datas['kindOfSalary'] = processing.salary(KIND_OF_SALARY)
-  # 給与（数値）
-  datas['numOfSalary'] = processing.salary(NUM_OF_SALARY)
-  # 給与（掲載用）
-  datas['salary'] = processing.salary(SALARY)
-
-  # 個室
-  datas['dormitory'] = processing.private_room()
-
-  # 画像
-  datas['picture'] = processing.picture()
-
-  # 勤務時間
-  datas['time'] = processing.time()
-
-  # 待遇
-  datas['treatment'] = processing.treatment()
-
-  # 仕事内容
-  datas['jobDesc'] = processing.jobDesc()
-
-  # パーマリンク
-  datas['permaLink'] = processing.permaLink()
-
-  # 食事
-  datas['meal'] = processing.meal()
-
-  # wifi
-  datas['wifi'] = processing.wifi()
-
-  # 温泉
-  datas['spa'] = processing.spa()
-
-  # 交通費支給
-  datas['transportationFee'] = processing.transportationFee()
-
-  # アフィリエイトリンク付与
-  datas['affiliateLink'] = processing.affiliateLink()
-
-  # キャンペーン
-  datas['campaign'] = processing.campaign()
-
-  # 会社
-  datas['company'] = processing.company()
-
-  # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
+  # 求人詳細のスクレイピング
+  processing = humanic.Humanic(detailSoup, afDtlLink)
+  primary = main.Main()
+  datas = primary.make_processing(processing)
 
   # 取得した画像をサーバーに保存する
   dV.save_image(datas)

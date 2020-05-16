@@ -7,7 +7,7 @@ from time import sleep
 import pymysql.cursors
 import datetime
 from distinct import distinctValue as dV
-from processing import aresort
+from processing import main, aresort
 from upsert_mysql import sc_daily as usDaily
 from upsert_mysql import refrectScDataToWp as toWp
 from upsert_mysql import decidePrivatePublish as decidePP
@@ -21,11 +21,6 @@ Global variable
 homeUrl = settings.AR_HOME_URL
 listUrl = "https://www.a-resort.jp/resort/ankens/search/?page="
 dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
-
-#salary
-KIND_OF_SALARY = 0
-NUM_OF_SALARY = 1
-SALARY = 2
 
 def aresort_page_list():
   """
@@ -82,68 +77,10 @@ def aresort_page_detail(afDtlLink):
   detailSoup = BeautifulSoup(detailHtml.text, 'html.parser')
   datas = {}
 
-  # ------------------- 【開始】求人詳細の各要素をスクレイピング -------------------
-  # 初期化
+  # 求人詳細のスクレイピング
   processing = aresort.Aresort(detailSoup, afDtlLink)
-
-  # タイトル
-  datas['title'] = processing.title()
-
-  # 勤務地
-  datas['place'] = processing.place()
-
-  # 職種
-  datas['occupation'] = processing.occupation()
-
-  # 勤務期間
-  datas['term'] = processing.term()
-
-  # 給与の種類
-  datas['kindOfSalary'] = processing.salary(KIND_OF_SALARY)
-  # 給与（数値）
-  datas['numOfSalary'] = processing.salary(NUM_OF_SALARY)
-  # 給与（掲載用）
-  datas['salary'] = processing.salary(SALARY)
-
-  # 個室
-  datas['dormitory'] = processing.dormitory()
-
-  # 画像
-  datas['picture'] = processing.picture()
-
-  # 勤務時間
-  datas['time'] = processing.time()
-
-  # 待遇
-  datas['treatment'] = processing.treatment()
-
- # 仕事内容
-  datas['jobDesc'] = processing.jobDesc()
-
-  # パーマリンク
-  datas['permaLink'] = processing.permaLink()
-
-  # 食事
-  datas['meal'] = processing.meal()
-
-  # wifi
-  datas['wifi'] = processing.wifi()
-
-  # 温泉
-  datas['spa'] = processing.spa()
-
-  # 交通費支給
-  datas['transportationFee'] = processing.transportationFee()
-
-  # アフィリエイトリンク付与
-  datas['affiliateLink'] = processing.affiliateLink()
-
-  # キャンペーン
-  datas['campaign'] = processing.campaign()
-
-  # 会社
-  datas['company'] = processing.company()
-  # ------------------- 【終了】求人詳細の各要素をスクレイピング -------------------
+  primary = main.Main()
+  datas = primary.make_processing(processing)
 
   # 取得した画像をサーバーに保存する
   dV.save_image(datas)
