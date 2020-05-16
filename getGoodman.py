@@ -19,11 +19,6 @@ listUrl1 = "https://www.resortbaito.com/search-results/?area="
 listUrl2 = "&extra=&top=on"
 dateKey = datetime.datetime.now().strftime('%Y-%m-%d')
 
-#salary
-KIND_OF_SALARY = 0
-NUM_OF_SALARY = 1
-SALARY = 2
-
 def goodman_page_list():
   """
   Get information from job lists
