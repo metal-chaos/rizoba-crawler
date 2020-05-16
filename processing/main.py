@@ -3,6 +3,11 @@ import constant
 class Main:
 
     def make_processing(self, processing):
+        """This is the main processing method, run processing methods
+
+        Args:
+            processing (class): A class for each methods
+        """
         datas = {}
 
         # タイトル
